@@ -1,0 +1,64 @@
+﻿<!doctype html>
+<html lang="ko">
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>나만의 영화관 · 영화 티어리스트</title>
+<style>
+*{box-sizing:border-box}body{margin:0;background:#101016;color:#f7f5ff;font-family:system-ui,'맑은 고딕',sans-serif;min-height:100vh;background-image:radial-gradient(ellipse at 50% 0,#302034 0,transparent 65%)}main{max-width:1100px;margin:auto;padding:48px 24px}header{margin-bottom:32px}.eyebrow{color:#efb66f;letter-spacing:3px;font-size:12px;font-weight:700}h1{font-size:clamp(30px,5vw,48px);margin:12px 0}p{color:#c3becf;line-height:1.7}.toolbar{display:flex;gap:12px;flex-wrap:wrap;margin:28px 0}form{display:flex;gap:8px;flex:1;min-width:0}input{background:#20202b;border:1px solid #656072;color:white;min-width:0;flex:1;padding:13px;border-radius:10px;font:inherit}button{font:inherit;font-weight:700;cursor:pointer;border:1px solid #75677d;background:#302936;color:#fff;border-radius:10px;padding:12px 18px}button[type=submit]{background:#e8b479;color:#21170e;border-color:#e8b479}button:hover{filter:brightness(1.15)}:focus-visible{outline:3px solid #ffcc88;outline-offset:4px}.tier{display:flex;min-height:112px;border:1px solid #494250;border-radius:14px;overflow:hidden;margin-bottom:12px;background:#191820}h2{margin:0;width:92px;flex-shrink:0;display:flex;align-items:center;justify-content:center;color:#17131b;background:var(--color);font-size:30px}.drop{display:flex;flex:1;min-width:0;align-content:flex-start;align-items:flex-start;flex-wrap:wrap;gap:10px;padding:16px;transition:background .15s}.drop:empty:before{content:'여기로 영화를 끌어 놓으세요';color:#a8a0b3;font-size:13px;padding:16px 0}.drop.over{background:#49394e;box-shadow:inset 0 0 0 2px #edbf87}.card{border:1px solid #776380;border-radius:10px;padding:15px 18px;background:linear-gradient(135deg,#3b3048,#272432);box-shadow:0 4px 10px #0004;cursor:grab;max-width:100%;overflow-wrap:anywhere;color:#fff;font-size:14px;font-weight:600}.card:active{cursor:grabbing}.card.dragging{opacity:.45}.unranked{margin-top:28px}.unranked h2{font-size:16px;background:#393442;color:#eee8f5}.unranked .drop{min-height:138px}#status{min-height:26px;color:#edc995;font-size:14px}footer{margin-top:28px;border-top:1px solid #494250;padding-top:16px;color:#b9b1c4;font-size:12px;line-height:1.8}@media(max-width:600px){main{padding:28px 14px}h2{width:56px}.drop{padding:12px;gap:8px}.card{padding:12px}.toolbar>button{width:100%}}
+</style>
+<main>
+<header><span class="eyebrow">MY PRIVATE CINEMA</span><h1>나만의 영화 티어리스트</h1><p>좋아하는 영화의 자리를 정해 보세요.<br>카드를 마우스로 끌어 등급 칸에 놓으면 자동으로 저장됩니다.<br>카드를 잡고 화면 위·아래 가장자리로 이동하면 자동으로 스크롤됩니다.</p></header>
+<div class="toolbar"><form id="add-form"><input id="title" aria-label="추가할 영화 제목" placeholder="새 영화 제목을 입력하세요" maxlength="120"><button type="submit">추가</button></form><button id="reset" type="button">초기화</button></div>
+<p id="status" role="status" aria-live="polite"></p>
+<div id="board"></div>
+<footer>어두운 영화관을 떠올리는 배경에 밝은 제목 카드를 배치했습니다.<br>이 브라우저에 저장됩니다. 같은 브라우저에서 같은 파일을 다시 열어 주세요. 브라우저 데이터 삭제 시 기록도 지워질 수 있습니다.</footer>
+</main>
+<script>
+'use strict';
+const INITIAL=['기생충','인터스텔라','라라랜드','센과 치히로의 행방불명','어벤져스: 엔드게임','범죄도시','타이타닉','토이 스토리'];
+const TIERS=['S','A','B','C','미분류'];
+const COLORS=['#f39a9f','#f3b487','#ead28c','#a7d3ae','#393442'];
+const KEY='codyssey-mission1-movie-A-shared-v1';
+const board=document.querySelector('#board'),status=document.querySelector('#status');
+const fresh=()=>INITIAL.map((title,i)=>({id:'initial-'+i,title,tier:'미분류'}));
+let movies=fresh(),dragId=null;
+// 드래그 중 화면 가장자리에서 자동 스크롤합니다.
+let scrollFrame=null,scrollSpeed=0,lastScrollTime=null;
+function stopAutoScroll(){
+ if(scrollFrame!==null)cancelAnimationFrame(scrollFrame);
+ scrollFrame=null;scrollSpeed=0;lastScrollTime=null;
+}
+function scrollTick(time){
+ scrollFrame=null;
+ if(dragId===null||scrollSpeed===0){stopAutoScroll();return}
+ const elapsed=lastScrollTime===null?16:Math.min(time-lastScrollTime,50);
+ lastScrollTime=time;
+ window.scrollBy(0,scrollSpeed*elapsed/1000);
+ scrollFrame=requestAnimationFrame(scrollTick);
+}
+document.addEventListener('dragover',event=>{
+ if(dragId===null)return;
+ event.preventDefault();
+ const edge=Math.min(110,window.innerHeight/4),y=event.clientY;
+ scrollSpeed=y<edge?-720*Math.max(0,1-y/edge):y>window.innerHeight-edge?720*Math.min(1,(y-window.innerHeight+edge)/edge):0;
+ if(scrollSpeed===0){stopAutoScroll();return}
+ if(scrollFrame===null)scrollFrame=requestAnimationFrame(scrollTick);
+});
+document.addEventListener('drop',stopAutoScroll,true);
+document.addEventListener('dragend',stopAutoScroll,true);
+document.addEventListener('dragleave',event=>{
+ if(event.relatedTarget===null&&(event.clientX<=0||event.clientY<=0||event.clientX>=window.innerWidth||event.clientY>=window.innerHeight))stopAutoScroll();
+});
+window.addEventListener('blur',stopAutoScroll);
+document.addEventListener('visibilitychange',()=>{if(document.hidden)stopAutoScroll()});
+function say(message){status.textContent=message}
+try{const raw=localStorage.getItem(KEY);if(raw!==null){const saved=JSON.parse(raw);if(!Array.isArray(saved)||!saved.every(m=>m&&typeof m.id==='string'&&typeof m.title==='string'&&m.title.trim()&&TIERS.includes(m.tier))||new Set(saved.map(m=>m.id)).size!==saved.length)throw Error('invalid');movies=saved;say('저장한 영화 목록과 배치를 불러왔습니다.')}}catch{say('저장된 정보를 불러오지 못했습니다. 처음 목록으로 시작합니다.')}
+function save(message){try{localStorage.setItem(KEY,JSON.stringify(movies));say(message+' · 저장 완료')}catch{say(message+' · 저장하지 못했습니다. 브라우저 저장 설정을 확인해 주세요.')}}
+function render(){board.replaceChildren();TIERS.forEach((tier,index)=>{const row=document.createElement('section');row.className='tier'+(tier==='미분류'?' unranked':'');row.style.setProperty('--color',COLORS[index]);const label=document.createElement('h2');label.textContent=tier;const zone=document.createElement('div');zone.className='drop';zone.setAttribute('aria-label',tier+' 영화 목록');zone.addEventListener('dragover',e=>{if(dragId===null)return;e.preventDefault();e.dataTransfer.dropEffect='move';zone.classList.add('over')});zone.addEventListener('dragleave',e=>{if(!zone.contains(e.relatedTarget))zone.classList.remove('over')});zone.addEventListener('drop',e=>{e.preventDefault();zone.classList.remove('over');const movie=movies.find(m=>m.id===dragId);if(!movie)return;movie.tier=tier;save(movie.title+' → '+tier+' 이동');dragId=null;render()});movies.filter(m=>m.tier===tier).forEach(movie=>{const card=document.createElement('div');card.className='card';card.textContent=movie.title;card.draggable=true;card.addEventListener('dragstart',e=>{dragId=movie.id;e.dataTransfer.setData('text/plain',movie.id);e.dataTransfer.effectAllowed='move';card.classList.add('dragging')});card.addEventListener('dragend',()=>{dragId=null;card.classList.remove('dragging');document.querySelectorAll('.over').forEach(z=>z.classList.remove('over'))});zone.append(card)});row.append(label,zone);board.append(row)})}
+document.querySelector('#add-form').addEventListener('submit',e=>{e.preventDefault();const input=document.querySelector('#title'),title=input.value.trim();if(!title){say('영화 제목을 입력해 주세요.');input.focus();return}movies.push({id:'movie-'+Date.now()+'-'+Math.random().toString(36).slice(2),title,tier:'미분류'});input.value='';save(title+' 추가');render();input.focus()});
+document.querySelector('#reset').addEventListener('click',()=>{if(!confirm('추가한 영화와 현재 등급 배치를 삭제하고, 처음 영화 8편을 모두 미분류로 되돌릴까요?'))return;movies=fresh();save('처음 영화 8편으로 초기화했습니다');render()});
+render();
+</script>
+</html>
+
+
